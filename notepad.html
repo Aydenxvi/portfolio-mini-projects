@@ -1,0 +1,167 @@
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Блокнот</title>
+<style>
+  :root {
+    --bg: #f6f6f3; --panel: #ffffff; --fg: #262521; --fg-dim: #8a8980;
+    --accent: #3d6b4f; --line: #e5e3da; --active: #eef3ee;
+    --font-ui: -apple-system, 'Segoe UI', Roboto, sans-serif;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #121310; --panel: #1b1c18; --fg: #ebeae4; --fg-dim: #908f86;
+      --accent: #6fac86; --line: #2a2b25; --active: #212a22; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #121310; --panel: #1b1c18; --fg: #ebeae4; --fg-dim: #908f86;
+    --accent: #6fac86; --line: #2a2b25; --active: #212a22; color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font-ui);
+    min-height: 100%; display: flex; align-items: center; justify-content: center;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 24px;
+  }
+  .app {
+    width: 100%; max-width: 640px; height: min(560px, 80vh); background: var(--panel);
+    border: 1px solid var(--line); border-radius: 16px; display: grid;
+    grid-template-columns: 180px 1fr; overflow: hidden;
+  }
+  @media (max-width: 520px) {
+    .app { grid-template-columns: 1fr; height: min(70vh, 520px); }
+    .editor { display: none; }
+    .app.mobile-editing .sidebar { display: none; }
+    .app.mobile-editing .editor { display: flex; }
+  }
+
+  .sidebar { border-right: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
+  .sidebar-top { padding: 12px; border-bottom: 1px solid var(--line); }
+  .new-btn {
+    width: 100%; appearance: none; border: 1px dashed var(--line); background: transparent; color: var(--fg-dim);
+    border-radius: 8px; padding: 8px 0; font-size: 13px; cursor: pointer; font-family: var(--font-ui);
+  }
+  .new-btn:hover { color: var(--accent); border-color: var(--accent); }
+  .note-list { flex: 1; overflow-y: auto; padding: 6px; }
+  .note-item {
+    padding: 9px 10px; border-radius: 8px; cursor: pointer; margin-bottom: 2px;
+  }
+  .note-item:hover { background: var(--active); }
+  .note-item.active { background: var(--active); }
+  .note-item .t { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .note-item .p { font-size: 11px; color: var(--fg-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .editor { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+  .editor-top { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+  .editor-top .back { display: none; appearance: none; border: none; background: none; color: var(--accent); font-size: 13px; cursor: pointer; }
+  @media (max-width: 520px) { .editor-top .back { display: inline; } }
+  .del-btn { appearance: none; border: none; background: none; color: var(--fg-dim); font-size: 13px; cursor: pointer; }
+  .del-btn:hover { color: #c0433a; }
+
+  textarea {
+    flex: 1; border: none; resize: none; background: transparent; color: var(--fg);
+    font-family: var(--font-ui); font-size: 14.5px; line-height: 1.6; padding: 16px;
+  }
+  textarea:focus { outline: none; }
+  .empty-state { display: flex; align-items: center; justify-content: center; flex: 1; color: var(--fg-dim); font-size: 13px; }
+</style>
+
+<div class="app" id="app"></div>
+
+<script>
+(function () {
+  var STORAGE_KEY = 'notepad-v1';
+  var app = document.getElementById('app');
+
+  var defaults = [
+    { id: 1, text: 'Идеи для портфолио\n\n— разные по сложности проекты\n— не всё должно быть идеальным' },
+    { id: 2, text: 'Покупки\n\n— кофе\n— тетрадь' }
+  ];
+
+  function load() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch (e) {}
+    return defaults;
+  }
+  function save() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(notes)); } catch (e) {} }
+
+  var notes = load();
+  var activeId = notes.length ? notes[0].id : null;
+  var mobileEditing = false;
+
+  function titleOf(note) {
+    var firstLine = (note.text.split('\n')[0] || '').trim();
+    return firstLine || 'Без названия';
+  }
+  function previewOf(note) {
+    var rest = note.text.split('\n').slice(1).join(' ').trim();
+    return rest || ' ';
+  }
+
+  function render() {
+    var active = notes.find(function (n) { return n.id === activeId; });
+
+    var listHtml = '<div class="sidebar-top"><button class="new-btn" id="newBtn">+ Новая заметка</button></div><div class="note-list">';
+    notes.forEach(function (n) {
+      listHtml += '<div class="note-item' + (n.id === activeId ? ' active' : '') + '" data-id="' + n.id + '">' +
+        '<div class="t">' + titleOf(n) + '</div><div class="p">' + previewOf(n) + '</div></div>';
+    });
+    listHtml += '</div>';
+
+    var editorHtml;
+    if (active) {
+      editorHtml =
+        '<div class="editor-top"><button class="back" id="backBtn">← Заметки</button><span></span><button class="del-btn" id="delBtn">Удалить</button></div>' +
+        '<textarea id="noteText" spellcheck="false">' + active.text.replace(/</g, '&lt;') + '</textarea>';
+    } else {
+      editorHtml = '<div class="editor-top"><span></span><span></span></div><div class="empty-state">Нет заметок</div>';
+    }
+
+    app.className = 'app' + (mobileEditing ? ' mobile-editing' : '');
+    app.innerHTML = '<div class="sidebar">' + listHtml + '</div><div class="editor">' + editorHtml + '</div>';
+
+    document.getElementById('newBtn').addEventListener('click', function () {
+      var id = Date.now();
+      notes.unshift({ id: id, text: '' });
+      activeId = id;
+      mobileEditing = true;
+      save();
+      render();
+      document.getElementById('noteText').focus();
+    });
+
+    app.querySelectorAll('.note-item').forEach(function (item) {
+      item.addEventListener('click', function () {
+        activeId = parseInt(item.dataset.id, 10);
+        mobileEditing = true;
+        render();
+      });
+    });
+
+    if (active) {
+      var ta = document.getElementById('noteText');
+      ta.addEventListener('input', function () {
+        active.text = ta.value;
+        save();
+        var items = document.querySelectorAll('.note-item');
+      });
+      document.getElementById('delBtn').addEventListener('click', function () {
+        notes = notes.filter(function (n) { return n.id !== activeId; });
+        activeId = notes.length ? notes[0].id : null;
+        mobileEditing = false;
+        save();
+        render();
+      });
+      var backBtn = document.getElementById('backBtn');
+      if (backBtn) backBtn.addEventListener('click', function () { mobileEditing = false; render(); });
+    }
+  }
+
+  render();
+})();
+</script>

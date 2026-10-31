@@ -1,0 +1,368 @@
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Сегодня</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500;1,500&family=DM+Sans:wght@400;500;600&display=swap">
+<style>
+  /*
+    Layout: one paper card, centered — date + title, a progress line,
+    a plain task list, an input row pinned to the card's bottom.
+  */
+  :root {
+    --bg: #f3efe5;
+    --card: #fffcf5;
+    --fg: #2c2820;
+    --fg-dim: #8f8672;
+    --accent: #5f7a5a;
+    --accent-soft: #e4ebe0;
+    --line: #e6e0d2;
+    --done: #b7ae9b;
+    --font-display: 'Fraunces', Georgia, serif;
+    --font-ui: 'DM Sans', -apple-system, 'Segoe UI', sans-serif;
+    color-scheme: light;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #18160f;
+      --card: #211e17;
+      --fg: #ece6d8;
+      --fg-dim: #8c8572;
+      --accent: #8fab86;
+      --accent-soft: #2a3327;
+      --line: #322e24;
+      --done: #5c5747;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #18160f;
+    --card: #211e17;
+    --fg: #ece6d8;
+    --fg-dim: #8c8572;
+    --accent: #8fab86;
+    --accent-soft: #2a3327;
+    --line: #322e24;
+    --done: #5c5747;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-ui);
+    min-height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 32px;
+  }
+
+  .card {
+    width: 100%;
+    max-width: 380px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    padding: 28px 26px 22px;
+    box-shadow: 0 30px 60px -32px rgba(30,26,16,0.35);
+  }
+
+  .date {
+    font-family: var(--font-ui);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--fg-dim);
+  }
+
+  h1 {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-weight: 500;
+    font-size: 34px;
+    margin: 2px 0 14px;
+    text-wrap: balance;
+  }
+
+  .progress {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+
+  .progress-track {
+    flex: 1;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--line);
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+    width: 0%;
+    transition: width 0.3s ease;
+  }
+
+  .progress-count {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--fg-dim);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+
+  ul.tasks {
+    list-style: none;
+    margin: 0 0 16px;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .task {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 2px;
+    border-bottom: 1px solid var(--line);
+  }
+  .task:last-child { border-bottom: none; }
+
+  .check {
+    appearance: none;
+    width: 19px;
+    height: 19px;
+    min-width: 19px;
+    border-radius: 6px;
+    border: 1.5px solid var(--fg-dim);
+    background: transparent;
+    cursor: pointer;
+    position: relative;
+    transition: background 0.15s ease, border-color 0.15s ease;
+  }
+  .check:checked {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+  .check:checked::after {
+    content: "";
+    position: absolute;
+    left: 5px;
+    top: 1px;
+    width: 5px;
+    height: 10px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(40deg);
+  }
+  .check:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .task-text {
+    flex: 1;
+    min-width: 0;
+    font-size: 15px;
+    line-height: 1.3;
+    overflow-wrap: break-word;
+  }
+  .task.done .task-text {
+    color: var(--done);
+    text-decoration: line-through;
+    text-decoration-color: var(--done);
+  }
+
+  .remove {
+    appearance: none;
+    border: none;
+    background: none;
+    color: var(--fg-dim);
+    font-size: 18px;
+    line-height: 1;
+    padding: 4px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.12s ease, color 0.12s ease;
+  }
+  .task:hover .remove,
+  .task:focus-within .remove { opacity: 1; }
+  .remove:hover { color: var(--fg); }
+  .remove:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; opacity: 1; }
+
+  .empty {
+    font-size: 14px;
+    color: var(--fg-dim);
+    font-style: italic;
+    padding: 10px 2px 18px;
+  }
+
+  form.add-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+  }
+
+  .add-row input[type="text"] {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    background: transparent;
+    font-family: var(--font-ui);
+    font-size: 15px;
+    color: var(--fg);
+    padding: 6px 2px;
+  }
+  .add-row input[type="text"]::placeholder { color: var(--fg-dim); }
+  .add-row input[type="text"]:focus { outline: none; }
+
+  .add-btn {
+    appearance: none;
+    border: none;
+    width: 30px;
+    height: 30px;
+    min-width: 30px;
+    border-radius: 50%;
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.08s ease, background 0.12s ease;
+  }
+  .add-btn:hover { background: var(--accent); color: var(--card); }
+  .add-btn:active { transform: scale(0.92); }
+  .add-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .progress-fill, .remove, .add-btn, .check { transition: none; }
+  }
+</style>
+
+<div class="card">
+  <div class="date" id="date">&nbsp;</div>
+  <h1>Сегодня</h1>
+
+  <div class="progress">
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    <div class="progress-count" id="progressCount">0 / 0</div>
+  </div>
+
+  <ul class="tasks" id="list"></ul>
+  <div class="empty" id="empty" hidden>Список пуст — добавьте первую задачу</div>
+
+  <form class="add-row" id="addForm">
+    <input type="text" id="addInput" placeholder="Новая задача…" maxlength="140" autocomplete="off">
+    <button type="submit" class="add-btn" aria-label="Добавить">+</button>
+  </form>
+</div>
+
+<script>
+(function () {
+  var STORAGE_KEY = 'today-tasks-v1';
+  var listEl = document.getElementById('list');
+  var emptyEl = document.getElementById('empty');
+  var fillEl = document.getElementById('progressFill');
+  var countEl = document.getElementById('progressCount');
+  var form = document.getElementById('addForm');
+  var input = document.getElementById('addInput');
+  var dateEl = document.getElementById('date');
+
+  var defaults = [
+    { text: 'Набросать план на день', done: true },
+    { text: 'Собрать портфолио-страницу', done: false },
+    { text: 'Прогуляться', done: false }
+  ];
+
+  function load() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch (e) {}
+    return defaults;
+  }
+
+  function save() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks)); } catch (e) {}
+  }
+
+  var tasks = load();
+
+  function render() {
+    listEl.innerHTML = '';
+    emptyEl.hidden = tasks.length > 0;
+
+    tasks.forEach(function (task, i) {
+      var li = document.createElement('li');
+      li.className = 'task' + (task.done ? ' done' : '');
+
+      var check = document.createElement('input');
+      check.type = 'checkbox';
+      check.className = 'check';
+      check.checked = task.done;
+      check.id = 'task-' + i;
+      check.addEventListener('change', function () {
+        tasks[i].done = check.checked;
+        save();
+        render();
+      });
+
+      var label = document.createElement('label');
+      label.className = 'task-text';
+      label.setAttribute('for', 'task-' + i);
+      label.textContent = task.text;
+
+      var remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'remove';
+      remove.setAttribute('aria-label', 'Удалить задачу');
+      remove.textContent = '×';
+      remove.addEventListener('click', function () {
+        tasks.splice(i, 1);
+        save();
+        render();
+      });
+
+      li.appendChild(check);
+      li.appendChild(label);
+      li.appendChild(remove);
+      listEl.appendChild(li);
+    });
+
+    var doneCount = tasks.filter(function (t) { return t.done; }).length;
+    var total = tasks.length;
+    countEl.textContent = doneCount + ' / ' + total;
+    fillEl.style.width = (total ? (doneCount / total) * 100 : 0) + '%';
+  }
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var text = input.value.trim();
+    if (!text) return;
+    tasks.push({ text: text, done: false });
+    input.value = '';
+    save();
+    render();
+  });
+
+  var months = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+  var days = ['воскресенье','понедельник','вторник','среда','четверг','пятница','суббота'];
+  var now = new Date();
+  dateEl.textContent = days[now.getDay()] + ', ' + now.getDate() + ' ' + months[now.getMonth()];
+
+  render();
+})();
+</script>

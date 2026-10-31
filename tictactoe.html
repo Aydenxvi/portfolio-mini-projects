@@ -1,0 +1,135 @@
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Крестики-нолики</title>
+<style>
+  :root {
+    --bg: #fafaf8; --fg: #212121; --fg-dim: #8a8a86; --line: #dcdcd6;
+    --x: #d9603b; --o: #2f6fa8; --cell-bg: #ffffff;
+    --font-ui: -apple-system, 'Segoe UI', Roboto, sans-serif;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #141414; --fg: #ececec; --fg-dim: #8f8f8f; --line: #2d2d2d;
+      --x: #e8805e; --o: #6ea6d8; --cell-bg: #1d1d1d; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #141414; --fg: #ececec; --fg-dim: #8f8f8f; --line: #2d2d2d;
+    --x: #e8805e; --o: #6ea6d8; --cell-bg: #1d1d1d; color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font-ui);
+    min-height: 100%; display: flex; align-items: center; justify-content: center;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 32px;
+  }
+  .wrap { width: 100%; max-width: 320px; text-align: center; }
+  .status { font-size: 15px; font-weight: 600; margin-bottom: 16px; min-height: 20px; }
+  .board {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 18px;
+  }
+  .cell {
+    aspect-ratio: 1; background: var(--cell-bg); border: 1px solid var(--line); border-radius: 12px;
+    font-size: 40px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    color: var(--fg); transition: transform 0.06s ease;
+  }
+  .cell:active:not(:disabled) { transform: scale(0.95); }
+  .cell:disabled { cursor: default; }
+  .cell.x { color: var(--x); }
+  .cell.o { color: var(--o); }
+  .cell:focus-visible { outline: 2px solid var(--fg-dim); outline-offset: 2px; }
+  .cell.win { background: color-mix(in srgb, var(--fg) 8%, var(--cell-bg)); }
+  button.reset {
+    appearance: none; border: 1px solid var(--line); background: transparent; color: var(--fg);
+    border-radius: 10px; padding: 10px 20px; font-size: 14px; font-family: var(--font-ui); cursor: pointer;
+  }
+  button.reset:hover { border-color: var(--fg-dim); }
+  button.reset:focus-visible { outline: 2px solid var(--fg-dim); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { .cell { transition: none; } }
+</style>
+
+<div class="wrap">
+  <div class="status" id="status">Ход: X</div>
+  <div class="board" id="board"></div>
+  <button class="reset" id="reset">Новая игра</button>
+</div>
+
+<script>
+(function () {
+  var board = document.getElementById('board');
+  var statusEl = document.getElementById('status');
+  var resetBtn = document.getElementById('reset');
+
+  var LINES = [
+    [0,1,2],[3,4,5],[6,7,8],
+    [0,3,6],[1,4,7],[2,5,8],
+    [0,4,8],[2,4,6]
+  ];
+
+  var cells = new Array(9).fill(null);
+  var turn = 'X';
+  var over = false;
+
+  function checkWin() {
+    for (var i = 0; i < LINES.length; i++) {
+      var l = LINES[i];
+      if (cells[l[0]] && cells[l[0]] === cells[l[1]] && cells[l[1]] === cells[l[2]]) {
+        return l;
+      }
+    }
+    return null;
+  }
+
+  function renderBoard() {
+    board.innerHTML = '';
+    for (var i = 0; i < 9; i++) {
+      (function (idx) {
+        var btn = document.createElement('button');
+        btn.className = 'cell' + (cells[idx] === 'X' ? ' x' : cells[idx] === 'O' ? ' o' : '');
+        btn.textContent = cells[idx] || '';
+        btn.disabled = !!cells[idx] || over;
+        btn.setAttribute('aria-label', 'Клетка ' + (idx + 1));
+        btn.addEventListener('click', function () { play(idx); });
+        board.appendChild(btn);
+      })(i);
+    }
+  }
+
+  function play(idx) {
+    if (cells[idx] || over) return;
+    cells[idx] = turn;
+    var win = checkWin();
+    if (win) {
+      over = true;
+      statusEl.textContent = 'Победили: ' + turn;
+      renderBoard();
+      win.forEach(function (i) {
+        board.children[i].classList.add('win');
+      });
+      return;
+    }
+    if (cells.every(function (c) { return c; })) {
+      over = true;
+      statusEl.textContent = 'Ничья';
+      renderBoard();
+      return;
+    }
+    turn = turn === 'X' ? 'O' : 'X';
+    statusEl.textContent = 'Ход: ' + turn;
+    renderBoard();
+  }
+
+  resetBtn.addEventListener('click', function () {
+    cells = new Array(9).fill(null);
+    turn = 'X';
+    over = false;
+    statusEl.textContent = 'Ход: X';
+    renderBoard();
+  });
+
+  renderBoard();
+})();
+</script>

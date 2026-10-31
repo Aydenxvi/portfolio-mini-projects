@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Мини-проекты</title>
+<style>
+  :root {
+    --bg: #f5f4f0; --card: #ffffff; --fg: #1d1c18; --fg-dim: #827f74; --line: #e6e3da; --accent: #b8622e;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #131210; --card: #1c1b17; --fg: #ece9e1; --fg-dim: #9a9688; --line: #2b2924; --accent: #e08a52; color-scheme: dark; }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg); min-height: 100vh;
+    font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
+    padding: 40px 16px;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; }
+  h1 { font-size: 22px; margin: 0 0 6px; }
+  p.sub { color: var(--fg-dim); font-size: 14px; margin: 0 0 28px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+  a.card {
+    display: block; background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 16px; text-decoration: none; color: var(--fg); transition: border-color 0.12s ease;
+  }
+  a.card:hover { border-color: var(--accent); }
+  a.card .t { font-weight: 600; font-size: 14.5px; margin-bottom: 4px; }
+  a.card .d { font-size: 12px; color: var(--fg-dim); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Мини-проекты</h1>
+  <p class="sub">Небольшие одностраничные приложения — каждое со своим визуальным стилем.</p>
+  <div class="grid">
+    <a class="card" href="calculator.html"><div class="t">Калькулятор</div><div class="d">Неоновый 3D-стиль</div></a>
+    <a class="card" href="todo.html"><div class="t">Список дел</div><div class="d">Задачи на день</div></a>
+    <a class="card" href="counter.html"><div class="t">Счётчик</div><div class="d">Клики +/-</div></a>
+    <a class="card" href="converter.html"><div class="t">Конвертер единиц</div><div class="d">км/мили, °C/°F</div></a>
+    <a class="card" href="password.html"><div class="t">Генератор паролей</div><div class="d">Длина, наборы символов</div></a>
+    <a class="card" href="pomodoro.html"><div class="t">Помодоро</div><div class="d">Таймер работы/отдыха</div></a>
+    <a class="card" href="tictactoe.html"><div class="t">Крестики-нолики</div><div class="d">Для двух игроков</div></a>
+    <a class="card" href="guessnumber.html"><div class="t">Угадай число</div><div class="d">1–100 с подсказками</div></a>
+    <a class="card" href="currency.html"><div class="t">Конвертер валют</div><div class="d">Демо-курсы</div></a>
+    <a class="card" href="markdown.html"><div class="t">Markdown-превью</div><div class="d">Живой рендер</div></a>
+    <a class="card" href="quiz.html"><div class="t">Викторина</div><div class="d">5 вопросов, счёт</div></a>
+    <a class="card" href="habits.html"><div class="t">Трекер привычек</div><div class="d">Сетка на неделю</div></a>
+    <a class="card" href="notepad.html"><div class="t">Блокнот</div><div class="d">Несколько заметок</div></a>
+    <a class="card" href="kanban.html"><div class="t">Канбан-доска</div><div class="d">Drag &amp; drop карточки</div></a>
+    <a class="card" href="dashboard.html"><div class="t">Дашборд</div><div class="d">Графики на демо-данных</div></a>
+  </div>
+</div>
+</body>
+</html>

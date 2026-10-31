@@ -1,0 +1,96 @@
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Конвертер единиц</title>
+<style>
+  :root {
+    --bg: #f0f4f3; --card: #ffffff; --fg: #1c2420; --fg-dim: #76837d;
+    --accent: #2a8f7c; --line: #dfe8e5;
+    --font-ui: -apple-system, 'Segoe UI', Roboto, sans-serif;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #101513; --card: #1a201d; --fg: #e7ece9; --fg-dim: #879189;
+      --accent: #4fc3a8; --line: #2a322e; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #101513; --card: #1a201d; --fg: #e7ece9; --fg-dim: #879189;
+    --accent: #4fc3a8; --line: #2a322e; color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font-ui);
+    min-height: 100%; display: flex; align-items: center; justify-content: center;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 32px;
+  }
+  .card {
+    width: 100%; max-width: 360px; background: var(--card); border: 1px solid var(--line);
+    border-radius: 16px; padding: 24px;
+  }
+  h1 { font-size: 16px; font-weight: 700; margin: 0 0 18px; letter-spacing: 0.01em; }
+  .group { margin-bottom: 22px; }
+  .group:last-child { margin-bottom: 0; }
+  .group-label { font-size: 12px; font-weight: 600; color: var(--fg-dim); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
+  .pair { display: flex; align-items: center; gap: 10px; }
+  .field { flex: 1; min-width: 0; }
+  .field label { display: block; font-size: 11px; color: var(--fg-dim); margin-bottom: 4px; }
+  .field input {
+    width: 100%; border: 1px solid var(--line); background: transparent; color: var(--fg);
+    border-radius: 10px; padding: 10px 12px; font-size: 18px; font-family: var(--font-ui);
+    font-variant-numeric: tabular-nums;
+  }
+  .field input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .eq { color: var(--fg-dim); font-size: 16px; padding-top: 16px; }
+  hr { border: none; border-top: 1px solid var(--line); margin: 20px 0; }
+</style>
+
+<div class="card">
+  <h1>Конвертер единиц</h1>
+
+  <div class="group">
+    <div class="group-label">Расстояние</div>
+    <div class="pair">
+      <div class="field"><label for="km">Километры</label><input id="km" type="number" value="10" inputmode="decimal"></div>
+      <div class="eq">=</div>
+      <div class="field"><label for="mi">Мили</label><input id="mi" type="number" inputmode="decimal"></div>
+    </div>
+  </div>
+
+  <hr>
+
+  <div class="group">
+    <div class="group-label">Температура</div>
+    <div class="pair">
+      <div class="field"><label for="c">°C</label><input id="c" type="number" value="20" inputmode="decimal"></div>
+      <div class="eq">=</div>
+      <div class="field"><label for="f">°F</label><input id="f" type="number" inputmode="decimal"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var km = document.getElementById('km');
+  var mi = document.getElementById('mi');
+  var c = document.getElementById('c');
+  var f = document.getElementById('f');
+
+  function round(n) { return Math.round(n * 1000) / 1000; }
+
+  function fromKm() { if (km.value !== '') mi.value = round(parseFloat(km.value) * 0.621371); }
+  function fromMi() { if (mi.value !== '') km.value = round(parseFloat(mi.value) / 0.621371); }
+  function fromC() { if (c.value !== '') f.value = round(parseFloat(c.value) * 9 / 5 + 32); }
+  function fromF() { if (f.value !== '') c.value = round((parseFloat(f.value) - 32) * 5 / 9); }
+
+  km.addEventListener('input', fromKm);
+  mi.addEventListener('input', fromMi);
+  c.addEventListener('input', fromC);
+  f.addEventListener('input', fromF);
+
+  fromKm();
+  fromC();
+})();
+</script>

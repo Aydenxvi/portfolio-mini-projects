@@ -1,0 +1,161 @@
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Канбан-доска</title>
+<style>
+  :root {
+    --bg: #eef1f5; --col-bg: #e4e8ee; --card: #ffffff; --fg: #1c2230; --fg-dim: #767f91;
+    --accent: #3058d0; --line: #d6dbe4;
+    --font-ui: -apple-system, 'Segoe UI', Roboto, sans-serif;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f1116; --col-bg: #171a22; --card: #1f232d; --fg: #e5e8f0; --fg-dim: #868fa3;
+      --accent: #7c93f0; --line: #2a2f3b; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f1116; --col-bg: #171a22; --card: #1f232d; --fg: #e5e8f0; --fg-dim: #868fa3;
+    --accent: #7c93f0; --line: #2a2f3b; color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font-ui);
+    min-height: 100%; display: flex; flex-direction: column; align-items: center;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 24px;
+  }
+  h1 { font-size: 16px; font-weight: 700; margin: 0 0 16px; width: 100%; max-width: 920px; }
+
+  .board { width: 100%; max-width: 920px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  @media (max-width: 640px) { .board { grid-template-columns: 1fr; } }
+
+  .col { background: var(--col-bg); border: 1px solid var(--line); border-radius: 14px; padding: 12px; min-height: 120px; display: flex; flex-direction: column; }
+  .col-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; padding: 0 2px; }
+  .col-head .t { font-size: 12.5px; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; color: var(--fg-dim); }
+  .col-head .n { font-size: 11px; color: var(--fg-dim); background: var(--card); border-radius: 10px; padding: 1px 7px; }
+
+  .cards { flex: 1; display: flex; flex-direction: column; gap: 8px; min-height: 40px; }
+  .cards.dragover { background: color-mix(in srgb, var(--accent) 8%, transparent); border-radius: 10px; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px;
+    font-size: 13.5px; line-height: 1.4; cursor: grab; display: flex; align-items: flex-start; gap: 6px;
+  }
+  .card.dragging { opacity: 0.4; }
+  .card .txt { flex: 1; min-width: 0; overflow-wrap: break-word; }
+  .card .rm { appearance: none; border: none; background: none; color: var(--fg-dim); font-size: 14px; cursor: pointer; line-height: 1; padding: 0; opacity: 0; }
+  .card:hover .rm, .card:focus-within .rm { opacity: 1; }
+
+  .add-row { display: flex; gap: 6px; margin-top: 10px; }
+  .add-row input {
+    flex: 1; min-width: 0; border: 1px solid var(--line); background: var(--card); color: var(--fg);
+    border-radius: 8px; padding: 7px 9px; font-size: 13px; font-family: var(--font-ui);
+  }
+  .add-row input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .add-row button {
+    appearance: none; border: none; border-radius: 8px; background: var(--accent); color: #fff;
+    font-weight: 700; padding: 0 12px; font-size: 14px; cursor: pointer; font-family: var(--font-ui);
+  }
+</style>
+
+<h1>Канбан-доска</h1>
+<div class="board" id="board"></div>
+
+<script>
+(function () {
+  var STORAGE_KEY = 'kanban-v1';
+  var COLUMNS = [
+    { key: 'todo', title: 'К выполнению' },
+    { key: 'doing', title: 'В работе' },
+    { key: 'done', title: 'Готово' }
+  ];
+
+  var defaults = {
+    todo: [{ id: 1, text: 'Собрать макет шапки сайта' }, { id: 2, text: 'Написать тексты для главной' }],
+    doing: [{ id: 3, text: 'Вёрстка карточек товара' }],
+    done: [{ id: 4, text: 'Настроить деплой' }]
+  };
+
+  function load() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch (e) {}
+    return defaults;
+  }
+  function save() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch (e) {} }
+
+  var data = load();
+  var board = document.getElementById('board');
+  var dragInfo = null;
+
+  function render() {
+    var html = '';
+    COLUMNS.forEach(function (col) {
+      html += '<div class="col">' +
+        '<div class="col-head"><span class="t">' + col.title + '</span><span class="n">' + data[col.key].length + '</span></div>' +
+        '<div class="cards" data-col="' + col.key + '">';
+      data[col.key].forEach(function (card) {
+        html += '<div class="card" draggable="true" data-id="' + card.id + '" data-col="' + col.key + '">' +
+          '<span class="txt">' + card.text + '</span><button class="rm" data-id="' + card.id + '" data-col="' + col.key + '" aria-label="Удалить">×</button></div>';
+      });
+      html += '</div>' +
+        '<form class="add-row" data-col="' + col.key + '"><input type="text" placeholder="Новая карточка…" maxlength="80"><button type="submit">+</button></form>' +
+        '</div>';
+    });
+    board.innerHTML = html;
+    wire();
+  }
+
+  function wire() {
+    board.querySelectorAll('.card').forEach(function (cardEl) {
+      cardEl.addEventListener('dragstart', function () {
+        dragInfo = { id: parseInt(cardEl.dataset.id, 10), from: cardEl.dataset.col };
+        cardEl.classList.add('dragging');
+      });
+      cardEl.addEventListener('dragend', function () { cardEl.classList.remove('dragging'); });
+    });
+
+    board.querySelectorAll('.rm').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var col = btn.dataset.col, id = parseInt(btn.dataset.id, 10);
+        data[col] = data[col].filter(function (c) { return c.id !== id; });
+        save(); render();
+      });
+    });
+
+    board.querySelectorAll('.cards').forEach(function (zone) {
+      zone.addEventListener('dragover', function (e) { e.preventDefault(); zone.classList.add('dragover'); });
+      zone.addEventListener('dragleave', function () { zone.classList.remove('dragover'); });
+      zone.addEventListener('drop', function (e) {
+        e.preventDefault();
+        zone.classList.remove('dragover');
+        if (!dragInfo) return;
+        var toCol = zone.dataset.col;
+        var fromList = data[dragInfo.from];
+        var cardIdx = fromList.findIndex(function (c) { return c.id === dragInfo.id; });
+        if (cardIdx === -1) return;
+        var card = fromList.splice(cardIdx, 1)[0];
+        data[toCol].push(card);
+        dragInfo = null;
+        save(); render();
+      });
+    });
+
+    board.querySelectorAll('.add-row').forEach(function (form) {
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var input = form.querySelector('input');
+        var text = input.value.trim();
+        if (!text) return;
+        data[form.dataset.col].push({ id: Date.now(), text: text });
+        save(); render();
+      });
+    });
+  }
+
+  render();
+})();
+</script>

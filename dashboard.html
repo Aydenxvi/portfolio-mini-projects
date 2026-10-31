@@ -1,0 +1,133 @@
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Дашборд аналитики</title>
+<style>
+  :root {
+    --bg: #f4f5f7; --card: #ffffff; --fg: #1a1c22; --fg-dim: #767c8a;
+    --accent: #3b5bdb; --accent-soft: #e8ecfb; --good: #2f9e5e; --line: #e5e7ec;
+    --font-num: Georgia, 'Times New Roman', serif;
+    --font-ui: -apple-system, 'Segoe UI', Roboto, sans-serif;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0d0e12; --card: #16181d; --fg: #e8e9ee; --fg-dim: #898f9e;
+      --accent: #7c93f0; --accent-soft: #1d2440; --good: #4fbf85; --line: #24262d; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0d0e12; --card: #16181d; --fg: #e8e9ee; --fg-dim: #898f9e;
+    --accent: #7c93f0; --accent-soft: #1d2440; --good: #4fbf85; --line: #24262d; color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font-ui);
+    min-height: 100%; display: flex; flex-direction: column; align-items: center;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 24px;
+  }
+  .wrap { width: 100%; max-width: 760px; }
+  .head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 16px; }
+  .head h1 { font-size: 16px; font-weight: 700; margin: 0; }
+  .head .note { font-size: 11px; color: var(--fg-dim); }
+
+  .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 14px; }
+  @media (max-width: 560px) { .tiles { grid-template-columns: 1fr; } }
+  .tile { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
+  .tile .l { font-size: 11.5px; color: var(--fg-dim); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 8px; }
+  .tile .v { font-family: var(--font-num); font-size: 30px; line-height: 1; }
+  .tile .d { font-size: 12px; margin-top: 6px; color: var(--good); font-variant-numeric: tabular-nums; }
+  .tile .d.down { color: #d1453a; }
+
+  .panels { display: grid; grid-template-columns: 1.4fr 1fr; gap: 12px; }
+  @media (max-width: 560px) { .panels { grid-template-columns: 1fr; } }
+  .panel { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px; }
+  .panel .pt { font-size: 12.5px; font-weight: 700; color: var(--fg-dim); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 14px; }
+
+  .bar-label { font-size: 10px; fill: var(--fg-dim); font-family: var(--font-ui); }
+  .bar-value { font-size: 10px; fill: var(--fg); font-family: var(--font-ui); font-weight: 600; }
+
+  .legend { display: flex; gap: 14px; margin-top: 10px; font-size: 11.5px; color: var(--fg-dim); }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .legend i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+</style>
+
+<div class="wrap">
+  <div class="head">
+    <h1>Аналитика сайта</h1>
+    <span class="note">демо-данные, последние 7 дней</span>
+  </div>
+
+  <div class="tiles">
+    <div class="tile"><div class="l">Посетители</div><div class="v">4 812</div><div class="d">+12.4% за неделю</div></div>
+    <div class="tile"><div class="l">Конверсия</div><div class="v">3.6%</div><div class="d down">−0.4 п.п.</div></div>
+    <div class="tile"><div class="l">Ср. сессия</div><div class="v">2:41</div><div class="d">+18 сек</div></div>
+  </div>
+
+  <div class="panels">
+    <div class="panel">
+      <div class="pt">Посетители по дням</div>
+      <svg id="barChart" viewBox="0 0 420 180" width="100%" style="overflow:visible"></svg>
+    </div>
+    <div class="panel">
+      <div class="pt">Источники трафика</div>
+      <svg id="donutChart" viewBox="0 0 160 160" width="100%" style="max-width:160px; display:block; margin:0 auto"></svg>
+      <div class="legend" id="legend"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var days = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+  var visits = [520, 610, 580, 700, 760, 900, 742];
+
+  var barSvg = document.getElementById('barChart');
+  var W = 420, H = 180, padL = 6, padR = 6, padB = 24, padT = 10;
+  var chartW = W - padL - padR;
+  var chartH = H - padT - padB;
+  var barGap = 10;
+  var barW = (chartW - barGap * (visits.length - 1)) / visits.length;
+  var maxV = Math.max.apply(null, visits);
+
+  var accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+  var fgDim = getComputedStyle(document.documentElement).getPropertyValue('--fg-dim').trim();
+
+  var barsHtml = '';
+  visits.forEach(function (v, i) {
+    var h = (v / maxV) * chartH;
+    var x = padL + i * (barW + barGap);
+    var y = padT + (chartH - h);
+    barsHtml += '<rect x="' + x + '" y="' + y + '" width="' + barW + '" height="' + h + '" rx="4" fill="' + accent + '" opacity="' + (i === visits.length - 1 ? 1 : 0.55) + '"></rect>';
+    barsHtml += '<text class="bar-label" x="' + (x + barW / 2) + '" y="' + (H - 6) + '" text-anchor="middle">' + days[i] + '</text>';
+  });
+  barSvg.innerHTML = barsHtml;
+  barSvg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+
+  var sources = [
+    { label: 'Поиск', value: 44, color: accent },
+    { label: 'Соцсети', value: 28, color: '#8fa6f5' },
+    { label: 'Прямые заходы', value: 18, color: '#c3cdf7' },
+    { label: 'Другое', value: 10, color: fgDim }
+  ];
+  var donutSvg = document.getElementById('donutChart');
+  var cx = 80, cy = 80, r = 60, stroke = 22;
+  var circ = 2 * Math.PI * r;
+  var offset = 0;
+  var donutHtml = '';
+  sources.forEach(function (s) {
+    var len = (s.value / 100) * circ;
+    donutHtml += '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="' + s.color + '" stroke-width="' + stroke +
+      '" stroke-dasharray="' + len + ' ' + (circ - len) + '" stroke-dashoffset="' + (-offset) + '" transform="rotate(-90 ' + cx + ' ' + cy + ')"></circle>';
+    offset += len;
+  });
+  donutSvg.innerHTML = donutHtml;
+
+  var legendHtml = '';
+  sources.forEach(function (s) {
+    legendHtml += '<span><i style="background:' + s.color + '"></i>' + s.label + ' ' + s.value + '%</span>';
+  });
+  document.getElementById('legend').innerHTML = legendHtml;
+})();
+</script>

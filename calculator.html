@@ -1,0 +1,515 @@
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Калькулятор</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700;900&family=Rajdhani:wght@500;600;700&display=swap">
+<style>
+  /*
+    Layout: a chrome-and-glass console floating in a dark void, tilted
+    in 3D toward the cursor; a scatter of CSS sparkles drifts behind it.
+    Deliberately single-theme (dark neon cabinet) — no light variant.
+  */
+  :root {
+    --void: #050507;
+    --void-2: #0c0d10;
+    --neon: #28f6ff;       /* primary neon: cyan */
+    --neon-dim: #0c7d85;
+    --hot: #ff2fb0;        /* secondary pop: magenta, used sparingly */
+    --hot-dim: #7a1456;
+    --chrome-hi: #f3f5f8;
+    --chrome-mid: #9ea4ae;
+    --chrome-lo: #2a2d33;
+    --glass: #e9fbff;
+    --font-display: 'Orbitron', 'Segoe UI', sans-serif;
+    --font-ui: 'Rajdhani', 'Segoe UI', sans-serif;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body { height: 100%; }
+
+  body {
+    background:
+      radial-gradient(ellipse 140% 90% at 50% 15%, #15121c 0%, var(--void) 55%),
+      var(--void);
+    color: var(--glass);
+    font-family: var(--font-ui);
+    min-height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 32px;
+    position: relative;
+  }
+
+  /* ambient floor glow + perspective grid, for depth */
+  body::before {
+    content: "";
+    position: absolute;
+    inset: auto 0 0 0;
+    height: 45%;
+    background:
+      repeating-linear-gradient(90deg, rgba(40,246,255,0.08) 0 1px, transparent 1px 48px),
+      linear-gradient(0deg, rgba(40,246,255,0.10), transparent 70%);
+    transform: perspective(500px) rotateX(55deg);
+    transform-origin: bottom;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .sparkles {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 1;
+  }
+  .sparkle {
+    position: absolute;
+    width: var(--s, 3px);
+    height: var(--s, 3px);
+    border-radius: 50%;
+    background: var(--c, var(--neon));
+    box-shadow: 0 0 6px 1px var(--c, var(--neon));
+    animation: twinkle var(--d, 3s) ease-in-out infinite;
+    animation-delay: var(--delay, 0s);
+    opacity: 0;
+  }
+  @keyframes twinkle {
+    0%, 100% { opacity: 0; transform: scale(0.4); }
+    50% { opacity: 1; transform: scale(1.3); }
+  }
+
+  .scene {
+    position: relative;
+    z-index: 2;
+    perspective: 1100px;
+    width: 100%;
+    max-width: 360px;
+  }
+
+  .rig {
+    transform-style: preserve-3d;
+    transition: transform 0.25s cubic-bezier(.22,1,.36,1);
+    will-change: transform;
+  }
+
+  /* chrome cabinet frame */
+  .calc {
+    position: relative;
+    background:
+      linear-gradient(155deg, var(--chrome-hi) 0%, var(--chrome-mid) 18%, var(--chrome-lo) 38%, #15161a 55%, var(--chrome-mid) 78%, var(--chrome-hi) 100%);
+    border-radius: 28px;
+    padding: 16px;
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,0.08),
+      0 30px 70px -20px rgba(0,0,0,0.85),
+      0 0 60px -10px rgba(40,246,255,0.35),
+      inset 0 2px 1px rgba(255,255,255,0.5),
+      inset 0 -3px 6px rgba(0,0,0,0.6);
+  }
+
+  /* subtle moving sheen across the brushed metal */
+  .calc::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 28px;
+    background: linear-gradient(115deg, transparent 30%, rgba(255,255,255,0.16) 48%, transparent 66%);
+    background-size: 240% 240%;
+    animation: sheen 6s ease-in-out infinite;
+    pointer-events: none;
+  }
+  @keyframes sheen {
+    0% { background-position: 120% -20%; }
+    50% { background-position: -20% 120%; }
+    100% { background-position: 120% -20%; }
+  }
+
+  .label {
+    font-family: var(--font-display);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    color: var(--neon);
+    text-shadow: 0 0 8px rgba(40,246,255,0.8);
+    margin: 4px 6px 12px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .display {
+    position: relative;
+    background: linear-gradient(180deg, #060709 0%, #0d1216 100%);
+    border-radius: 18px;
+    padding: 22px 20px 18px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: flex-end;
+    min-height: 96px;
+    margin-bottom: 16px;
+    overflow: hidden;
+    box-shadow:
+      inset 0 3px 10px rgba(0,0,0,0.9),
+      inset 0 0 0 1px rgba(40,246,255,0.25),
+      inset 0 0 24px rgba(40,246,255,0.12);
+  }
+  .display::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(0deg, rgba(40,246,255,0.05) 0 1px, transparent 1px 3px);
+    mix-blend-mode: screen;
+    pointer-events: none;
+  }
+
+  .display-expr {
+    font-family: var(--font-ui);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--neon);
+    opacity: 0.6;
+    min-height: 16px;
+    white-space: nowrap;
+    overflow-x: auto;
+    max-width: 100%;
+    font-variant-numeric: tabular-nums;
+  }
+  .display-expr::-webkit-scrollbar { display: none; }
+
+  .display-value {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: clamp(28px, 9vw, 38px);
+    color: var(--glass);
+    text-shadow:
+      0 0 6px rgba(40,246,255,0.9),
+      0 0 18px rgba(40,246,255,0.6),
+      0 0 36px rgba(40,246,255,0.35);
+    line-height: 1.15;
+    white-space: nowrap;
+    overflow-x: auto;
+    max-width: 100%;
+    font-variant-numeric: tabular-nums;
+  }
+  .display-value::-webkit-scrollbar { display: none; }
+
+  .pad {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 11px;
+    transform-style: preserve-3d;
+  }
+
+  button.key {
+    appearance: none;
+    border: none;
+    border-radius: 14px;
+    font-family: var(--font-ui);
+    font-size: 19px;
+    font-weight: 600;
+    padding: 0;
+    aspect-ratio: 1 / 0.8;
+    cursor: pointer;
+    position: relative;
+    color: #eef6f8;
+    background:
+      linear-gradient(180deg, #4b5159 0%, #2a2d33 45%, #1c1e22 100%);
+    box-shadow:
+      0 5px 0 0 #0c0d10,
+      0 8px 14px -4px rgba(0,0,0,0.7),
+      inset 0 1px 1px rgba(255,255,255,0.35),
+      inset 0 -4px 6px rgba(0,0,0,0.5);
+    transform: translateZ(10px);
+    transition: transform 0.08s ease, box-shadow 0.08s ease, filter 0.12s ease;
+  }
+  button.key:active {
+    transform: translateZ(10px) translateY(4px);
+    box-shadow:
+      0 1px 0 0 #0c0d10,
+      0 2px 6px -2px rgba(0,0,0,0.7),
+      inset 0 1px 1px rgba(255,255,255,0.3),
+      inset 0 -2px 4px rgba(0,0,0,0.5);
+  }
+  button.key:focus-visible { outline: 2px solid var(--neon); outline-offset: 3px; }
+
+  button.key.op {
+    color: #fff;
+    background: linear-gradient(180deg, #37e6f2 0%, #0ea8b8 45%, #086b78 100%);
+    box-shadow:
+      0 5px 0 0 #053f47,
+      0 0 18px -2px rgba(40,246,255,0.8),
+      0 8px 16px -4px rgba(0,0,0,0.7),
+      inset 0 1px 1px rgba(255,255,255,0.6),
+      inset 0 -4px 6px rgba(0,0,0,0.35);
+    font-size: 21px;
+  }
+  button.key.op:active {
+    transform: translateZ(10px) translateY(4px);
+    box-shadow:
+      0 1px 0 0 #053f47,
+      0 0 10px -2px rgba(40,246,255,0.7),
+      inset 0 1px 1px rgba(255,255,255,0.5),
+      inset 0 -2px 4px rgba(0,0,0,0.35);
+  }
+
+  button.key.fn {
+    color: var(--neon);
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+
+  button.key.eq {
+    color: #fff;
+    background: linear-gradient(180deg, #ff6fd4 0%, #e2199a 45%, #8c0f61 100%);
+    box-shadow:
+      0 5px 0 0 #58073c,
+      0 0 24px -2px rgba(255,47,176,0.9),
+      0 8px 16px -4px rgba(0,0,0,0.7),
+      inset 0 1px 1px rgba(255,255,255,0.6),
+      inset 0 -4px 6px rgba(0,0,0,0.35);
+    font-size: 22px;
+  }
+  button.key.eq:active {
+    transform: translateZ(10px) translateY(4px);
+    box-shadow:
+      0 1px 0 0 #58073c,
+      0 0 14px -2px rgba(255,47,176,0.8),
+      inset 0 1px 1px rgba(255,255,255,0.5),
+      inset 0 -2px 4px rgba(0,0,0,0.35);
+  }
+
+  button.key.zero { grid-column: span 2; aspect-ratio: auto; }
+
+  @media (prefers-reduced-motion: reduce) {
+    button.key, .rig, .calc::after, .sparkle { transition: none; animation: none; }
+  }
+</style>
+
+<div class="sparkles" id="sparkles"></div>
+
+<div class="scene" id="scene">
+  <div class="rig" id="rig">
+    <div class="calc">
+      <div class="label">Калькулятор</div>
+      <div class="display">
+        <div class="display-expr" id="expr">&nbsp;</div>
+        <div class="display-value" id="value">0</div>
+      </div>
+      <div class="pad" id="pad">
+        <button class="key fn" data-action="clear">C</button>
+        <button class="key fn" data-action="sign">±</button>
+        <button class="key fn" data-action="percent">%</button>
+        <button class="key op" data-action="op" data-op="÷">÷</button>
+
+        <button class="key" data-action="digit" data-digit="7">7</button>
+        <button class="key" data-action="digit" data-digit="8">8</button>
+        <button class="key" data-action="digit" data-digit="9">9</button>
+        <button class="key op" data-action="op" data-op="×">×</button>
+
+        <button class="key" data-action="digit" data-digit="4">4</button>
+        <button class="key" data-action="digit" data-digit="5">5</button>
+        <button class="key" data-action="digit" data-digit="6">6</button>
+        <button class="key op" data-action="op" data-op="−">−</button>
+
+        <button class="key" data-action="digit" data-digit="1">1</button>
+        <button class="key" data-action="digit" data-digit="2">2</button>
+        <button class="key" data-action="digit" data-digit="3">3</button>
+        <button class="key op" data-action="op" data-op="+">+</button>
+
+        <button class="key zero" data-action="digit" data-digit="0">0</button>
+        <button class="key" data-action="decimal">,</button>
+        <button class="key eq" data-action="equals">=</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var exprEl = document.getElementById('expr');
+  var valueEl = document.getElementById('value');
+  var pad = document.getElementById('pad');
+
+  var state = {
+    current: '0',
+    previous: null,
+    operator: null,
+    justEvaluated: false
+  };
+
+  function formatNum(n) {
+    if (!isFinite(n)) return 'Error';
+    var s = String(n);
+    if (s.length > 12) {
+      s = parseFloat(n.toPrecision(10)).toString();
+    }
+    return s.replace('.', ',');
+  }
+
+  function render() {
+    valueEl.textContent = state.current.replace('.', ',');
+    if (state.operator && state.previous !== null) {
+      exprEl.textContent = formatNum(state.previous) + ' ' + state.operator;
+    } else {
+      exprEl.textContent = ' ';
+    }
+  }
+
+  function inputDigit(d) {
+    if (state.justEvaluated) {
+      state.current = '0';
+      state.previous = null;
+      state.operator = null;
+      state.justEvaluated = false;
+    }
+    if (state.current === '0') {
+      state.current = d;
+    } else if (state.current.replace('-', '').replace('.', '').length < 12) {
+      state.current += d;
+    }
+  }
+
+  function inputDecimal() {
+    if (state.justEvaluated) {
+      state.current = '0';
+      state.previous = null;
+      state.operator = null;
+      state.justEvaluated = false;
+    }
+    if (state.current.indexOf('.') === -1) {
+      state.current += '.';
+    }
+  }
+
+  function compute(a, b, op) {
+    switch (op) {
+      case '+': return a + b;
+      case '−': return a - b;
+      case '×': return a * b;
+      case '÷': return b === 0 ? NaN : a / b;
+      default: return b;
+    }
+  }
+
+  function chooseOperator(op) {
+    var cur = parseFloat(state.current);
+    if (state.operator && state.previous !== null && !state.justEvaluated) {
+      var result = compute(state.previous, cur, state.operator);
+      state.previous = result;
+      state.current = formatNum(result).replace(',', '.');
+    } else {
+      state.previous = cur;
+    }
+    state.operator = op;
+    state.justEvaluated = false;
+    state.current = '0';
+  }
+
+  function equals() {
+    if (state.operator === null || state.previous === null) return;
+    var cur = parseFloat(state.current);
+    var result = compute(state.previous, cur, state.operator);
+    state.current = formatNum(result).replace(',', '.');
+    state.previous = null;
+    state.operator = null;
+    state.justEvaluated = true;
+  }
+
+  function clearAll() {
+    state.current = '0';
+    state.previous = null;
+    state.operator = null;
+    state.justEvaluated = false;
+  }
+
+  function toggleSign() {
+    if (state.current === '0') return;
+    state.current = state.current.charAt(0) === '-'
+      ? state.current.slice(1)
+      : '-' + state.current;
+  }
+
+  function percent() {
+    var cur = parseFloat(state.current);
+    state.current = formatNum(cur / 100).replace(',', '.');
+  }
+
+  pad.addEventListener('click', function (e) {
+    var btn = e.target.closest('button.key');
+    if (!btn) return;
+    var action = btn.dataset.action;
+
+    if (action === 'digit') inputDigit(btn.dataset.digit);
+    else if (action === 'decimal') inputDecimal();
+    else if (action === 'op') chooseOperator(btn.dataset.op);
+    else if (action === 'equals') equals();
+    else if (action === 'clear') clearAll();
+    else if (action === 'sign') toggleSign();
+    else if (action === 'percent') percent();
+
+    render();
+  });
+
+  window.addEventListener('keydown', function (e) {
+    if (e.key >= '0' && e.key <= '9') inputDigit(e.key);
+    else if (e.key === '.' || e.key === ',') inputDecimal();
+    else if (e.key === '+') chooseOperator('+');
+    else if (e.key === '-') chooseOperator('−');
+    else if (e.key === '*') chooseOperator('×');
+    else if (e.key === '/') { e.preventDefault(); chooseOperator('÷'); }
+    else if (e.key === 'Enter' || e.key === '=') equals();
+    else if (e.key === 'Backspace') {
+      state.current = state.current.length > 1 ? state.current.slice(0, -1) : '0';
+    }
+    else if (e.key === 'Escape') clearAll();
+    else return;
+    render();
+  });
+
+  render();
+
+  // --- ambient sparkles ---
+  var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var sparkleHost = document.getElementById('sparkles');
+  if (!reduceMotion && sparkleHost) {
+    var colors = ['#28f6ff', '#ff2fb0', '#ffffff'];
+    var count = 26;
+    for (var i = 0; i < count; i++) {
+      var sp = document.createElement('div');
+      sp.className = 'sparkle';
+      var size = (Math.random() * 2.5 + 1.5).toFixed(1) + 'px';
+      var dur = (Math.random() * 3 + 2.5).toFixed(1) + 's';
+      var delay = (Math.random() * 5).toFixed(1) + 's';
+      sp.style.setProperty('--s', size);
+      sp.style.setProperty('--c', colors[i % colors.length]);
+      sp.style.setProperty('--d', dur);
+      sp.style.setProperty('--delay', delay);
+      sp.style.left = (Math.random() * 100).toFixed(1) + '%';
+      sp.style.top = (Math.random() * 100).toFixed(1) + '%';
+      sparkleHost.appendChild(sp);
+    }
+  }
+
+  // --- 3D tilt toward cursor ---
+  var scene = document.getElementById('scene');
+  var rig = document.getElementById('rig');
+  if (!reduceMotion && scene && rig && window.matchMedia('(hover: hover)').matches) {
+    scene.addEventListener('mousemove', function (e) {
+      var r = scene.getBoundingClientRect();
+      var px = (e.clientX - r.left) / r.width - 0.5;
+      var py = (e.clientY - r.top) / r.height - 0.5;
+      rig.style.transform = 'rotateY(' + (px * 14) + 'deg) rotateX(' + (py * -14) + 'deg)';
+    });
+    scene.addEventListener('mouseleave', function () {
+      rig.style.transform = 'rotateY(0deg) rotateX(0deg)';
+    });
+  }
+})();
+</script>

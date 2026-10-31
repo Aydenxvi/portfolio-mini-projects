@@ -1,0 +1,129 @@
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Угадай число</title>
+<style>
+  :root {
+    --bg: #fdf8f0; --fg: #2c2416; --fg-dim: #8f8368; --accent: #c9821f;
+    --line: #ece0c9; --card: #ffffff;
+    --font-num: Georgia, 'Times New Roman', serif;
+    --font-ui: -apple-system, 'Segoe UI', Roboto, sans-serif;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #17140c; --fg: #f1ead9; --fg-dim: #a49877; --accent: #e0a63f;
+      --line: #2d2719; --card: #201b11; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #17140c; --fg: #f1ead9; --fg-dim: #a49877; --accent: #e0a63f;
+    --line: #2d2719; --card: #201b11; color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font-ui);
+    min-height: 100%; display: flex; align-items: center; justify-content: center;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 32px;
+  }
+  .card { width: 100%; max-width: 340px; background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 26px; text-align: center; }
+  h1 { font-size: 16px; font-weight: 700; margin: 0 0 4px; }
+  .sub { font-size: 13px; color: var(--fg-dim); margin-bottom: 20px; }
+
+  .hint { font-family: var(--font-num); font-size: 24px; min-height: 36px; margin-bottom: 18px; }
+  .hint.up { color: #c0432f; }
+  .hint.down { color: #2f6fa8; }
+  .hint.win { color: var(--accent); }
+
+  .row { display: flex; gap: 8px; margin-bottom: 14px; }
+  input[type="number"] {
+    flex: 1; border: 1px solid var(--line); background: transparent; color: var(--fg);
+    border-radius: 10px; padding: 12px; font-size: 18px; font-family: var(--font-ui); text-align: center;
+  }
+  input[type="number"]:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  button.go {
+    appearance: none; border: none; border-radius: 10px; background: var(--accent); color: #241c08;
+    font-weight: 700; padding: 0 20px; font-size: 15px; cursor: pointer; font-family: var(--font-ui);
+  }
+  button.go:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+
+  .meta { font-size: 13px; color: var(--fg-dim); margin-bottom: 14px; }
+  .meta b { color: var(--fg); font-variant-numeric: tabular-nums; }
+
+  button.again {
+    appearance: none; border: 1px solid var(--line); background: transparent; color: var(--fg);
+    border-radius: 10px; padding: 9px 18px; font-size: 14px; cursor: pointer; font-family: var(--font-ui);
+  }
+  button.again:hover { border-color: var(--accent); }
+  button.again:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+</style>
+
+<div class="card">
+  <h1>Угадай число</h1>
+  <div class="sub">Я загадал число от 1 до 100</div>
+
+  <div class="hint" id="hint">Введите первое предположение</div>
+
+  <div class="row">
+    <input type="number" id="guess" min="1" max="100" placeholder="?">
+    <button class="go" id="go">Угадать</button>
+  </div>
+
+  <div class="meta">Попыток: <b id="tries">0</b></div>
+  <button class="again" id="again" hidden>Сыграть снова</button>
+</div>
+
+<script>
+(function () {
+  var target = Math.floor(Math.random() * 100) + 1;
+  var tries = 0;
+  var over = false;
+
+  var guessInput = document.getElementById('guess');
+  var goBtn = document.getElementById('go');
+  var hintEl = document.getElementById('hint');
+  var triesEl = document.getElementById('tries');
+  var againBtn = document.getElementById('again');
+
+  function attempt() {
+    if (over) return;
+    var val = parseInt(guessInput.value, 10);
+    if (isNaN(val) || val < 1 || val > 100) {
+      hintEl.textContent = 'Введите число от 1 до 100';
+      hintEl.className = 'hint';
+      return;
+    }
+    tries++;
+    triesEl.textContent = tries;
+
+    if (val === target) {
+      hintEl.textContent = 'Верно! Это было ' + target;
+      hintEl.className = 'hint win';
+      over = true;
+      goBtn.disabled = true;
+      guessInput.disabled = true;
+      againBtn.hidden = false;
+    } else if (val < target) {
+      hintEl.textContent = 'Больше ↑';
+      hintEl.className = 'hint up';
+    } else {
+      hintEl.textContent = 'Меньше ↓';
+      hintEl.className = 'hint down';
+    }
+    guessInput.value = '';
+    guessInput.focus();
+  }
+
+  goBtn.addEventListener('click', attempt);
+  guessInput.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') attempt();
+  });
+
+  againBtn.addEventListener('click', function () {
+    location.reload();
+  });
+
+  guessInput.focus();
+})();
+</script>

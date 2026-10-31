@@ -1,0 +1,142 @@
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Мини-викторина</title>
+<style>
+  :root {
+    --bg: #f2f0fb; --card: #ffffff; --fg: #221f33; --fg-dim: #7c7693;
+    --accent: #6c4fe0; --line: #e4e0f5; --correct: #2f9e5e; --wrong: #d1453a;
+    --font-ui: -apple-system, 'Segoe UI', Roboto, sans-serif;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #130f1f; --card: #1c1830; --fg: #ece9f7; --fg-dim: #978fb8;
+      --accent: #9b84f5; --line: #2c2645; --correct: #4fbf85; --wrong: #e46a60; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #130f1f; --card: #1c1830; --fg: #ece9f7; --fg-dim: #978fb8;
+    --accent: #9b84f5; --line: #2c2645; --correct: #4fbf85; --wrong: #e46a60; color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font-ui);
+    min-height: 100%; display: flex; align-items: center; justify-content: center;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 32px;
+  }
+  .card { width: 100%; max-width: 380px; background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 26px; }
+
+  .meta-row { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--fg-dim); margin-bottom: 10px; font-variant-numeric: tabular-nums; }
+  .track { height: 4px; border-radius: 2px; background: var(--line); margin-bottom: 20px; overflow: hidden; }
+  .fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.25s ease; }
+
+  h2 { font-size: 18px; font-weight: 700; margin: 0 0 18px; line-height: 1.35; text-wrap: balance; }
+
+  .options { display: flex; flex-direction: column; gap: 9px; }
+  button.opt {
+    text-align: left; appearance: none; border: 1px solid var(--line); background: transparent; color: var(--fg);
+    border-radius: 11px; padding: 12px 14px; font-size: 14.5px; font-family: var(--font-ui); cursor: pointer;
+    transition: border-color 0.12s ease, background 0.12s ease;
+  }
+  button.opt:hover:not(:disabled) { border-color: var(--accent); }
+  button.opt:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  button.opt.correct { border-color: var(--correct); background: color-mix(in srgb, var(--correct) 14%, transparent); }
+  button.opt.wrong { border-color: var(--wrong); background: color-mix(in srgb, var(--wrong) 14%, transparent); }
+  button.opt:disabled { cursor: default; }
+
+  .next {
+    margin-top: 18px; width: 100%; appearance: none; border: none; border-radius: 11px;
+    background: var(--accent); color: #fff; font-weight: 600; padding: 11px 0; font-size: 14.5px;
+    cursor: pointer; font-family: var(--font-ui); opacity: 0; pointer-events: none; transition: opacity 0.15s ease;
+  }
+  .next.show { opacity: 1; pointer-events: auto; }
+  .next:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+
+  .result { text-align: center; }
+  .result .score { font-size: 44px; font-weight: 800; color: var(--accent); margin: 6px 0 4px; }
+  .result .score-label { font-size: 13px; color: var(--fg-dim); margin-bottom: 20px; }
+  .retry {
+    appearance: none; border: 1px solid var(--line); background: transparent; color: var(--fg);
+    border-radius: 11px; padding: 10px 20px; font-size: 14px; cursor: pointer; font-family: var(--font-ui);
+  }
+  .retry:hover { border-color: var(--accent); }
+
+  @media (prefers-reduced-motion: reduce) { .fill, .next, button.opt { transition: none; } }
+</style>
+
+<div class="card" id="card"></div>
+
+<script>
+(function () {
+  var questions = [
+    { q: 'Какой язык выполняется прямо в браузере?', a: ['Python', 'JavaScript', 'C++', 'Swift'], correct: 1 },
+    { q: 'Что из этого — язык разметки, а не язык программирования?', a: ['HTML', 'Java', 'Go', 'Rust'], correct: 0 },
+    { q: 'Какое свойство CSS отвечает за расстояние между элементами по сетке?', a: ['margin', 'gap', 'z-index', 'flex-grow'], correct: 1 },
+    { q: 'Какой формат чаще всего используют для обмена данными с API?', a: ['CSV', 'XML', 'JSON', 'YAML'], correct: 2 },
+    { q: 'Что делает localStorage?', a: ['Отправляет данные на сервер', 'Хранит данные в браузере', 'Сжимает изображения', 'Компилирует код'], correct: 1 }
+  ];
+
+  var idx = 0;
+  var score = 0;
+  var answered = false;
+  var card = document.getElementById('card');
+
+  function renderQuestion() {
+    answered = false;
+    var q = questions[idx];
+    var html = '';
+    html += '<div class="meta-row"><span>Вопрос ' + (idx + 1) + ' из ' + questions.length + '</span><span>Счёт: ' + score + '</span></div>';
+    html += '<div class="track"><div class="fill" style="width:' + (idx / questions.length * 100) + '%"></div></div>';
+    html += '<h2>' + q.q + '</h2>';
+    html += '<div class="options" id="options">';
+    q.a.forEach(function (opt, i) {
+      html += '<button class="opt" data-i="' + i + '">' + opt + '</button>';
+    });
+    html += '</div>';
+    html += '<button class="next" id="next">' + (idx === questions.length - 1 ? 'Результат' : 'Далее') + '</button>';
+    card.innerHTML = html;
+
+    var optsEl = document.getElementById('options');
+    optsEl.querySelectorAll('.opt').forEach(function (btn) {
+      btn.addEventListener('click', function () { selectAnswer(parseInt(btn.dataset.i, 10)); });
+    });
+    document.getElementById('next').addEventListener('click', function () {
+      idx++;
+      if (idx < questions.length) renderQuestion(); else renderResult();
+    });
+  }
+
+  function selectAnswer(i) {
+    if (answered) return;
+    answered = true;
+    var q = questions[idx];
+    var buttons = document.querySelectorAll('.opt');
+    buttons.forEach(function (btn, bi) {
+      btn.disabled = true;
+      if (bi === q.correct) btn.classList.add('correct');
+      else if (bi === i) btn.classList.add('wrong');
+    });
+    if (i === q.correct) score++;
+    document.querySelector('.meta-row span:last-child').textContent = 'Счёт: ' + score;
+    document.getElementById('next').classList.add('show');
+  }
+
+  function renderResult() {
+    var pct = Math.round((score / questions.length) * 100);
+    card.innerHTML =
+      '<div class="result">' +
+        '<div class="meta-row" style="justify-content:center">Готово</div>' +
+        '<div class="score">' + score + ' / ' + questions.length + '</div>' +
+        '<div class="score-label">' + pct + '% правильных ответов</div>' +
+        '<button class="retry" id="retry">Пройти ещё раз</button>' +
+      '</div>';
+    document.getElementById('retry').addEventListener('click', function () {
+      idx = 0; score = 0; renderQuestion();
+    });
+  }
+
+  renderQuestion();
+})();
+</script>

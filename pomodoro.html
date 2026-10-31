@@ -1,0 +1,168 @@
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Помодоро</title>
+<style>
+  :root {
+    --bg: #fdf6f0; --fg: #3a2a22; --fg-dim: #9c8a7e; --ring-track: #f0e2d6;
+    --work: #d9603b; --rest: #4f8f6b; --line: #ecdfd2;
+    --font-num: Georgia, 'Times New Roman', serif;
+    --font-ui: -apple-system, 'Segoe UI', Roboto, sans-serif;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #1c1512; --fg: #f3e9e1; --fg-dim: #a3938a; --ring-track: #2c231e;
+      --work: #e8805e; --rest: #68b88c; --line: #2c231e; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #1c1512; --fg: #f3e9e1; --fg-dim: #a3938a; --ring-track: #2c231e;
+    --work: #e8805e; --rest: #68b88c; --line: #2c231e; color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font-ui);
+    min-height: 100%; display: flex; align-items: center; justify-content: center;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 32px;
+  }
+  .wrap { width: 100%; max-width: 300px; text-align: center; }
+
+  .mode-label {
+    font-size: 12px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--work); margin-bottom: 18px; transition: color 0.2s ease;
+  }
+  .mode-label.rest { color: var(--rest); }
+
+  .ring-wrap { position: relative; width: 220px; height: 220px; margin: 0 auto 22px; }
+  svg { transform: rotate(-90deg); }
+  .track { fill: none; stroke: var(--ring-track); stroke-width: 10; }
+  .progress { fill: none; stroke: var(--work); stroke-width: 10; stroke-linecap: round; transition: stroke-dashoffset 1s linear, stroke 0.2s ease; }
+  .progress.rest { stroke: var(--rest); }
+  .time {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-num); font-size: 48px; font-variant-numeric: tabular-nums;
+  }
+
+  .cycles { font-size: 13px; color: var(--fg-dim); margin-bottom: 22px; }
+  .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--line); margin: 0 2px; }
+  .dot.done { background: var(--work); }
+
+  .controls { display: flex; gap: 10px; justify-content: center; }
+  button {
+    appearance: none; border: 1px solid var(--line); background: transparent; color: var(--fg);
+    border-radius: 10px; padding: 10px 18px; font-size: 14px; font-family: var(--font-ui);
+    cursor: pointer; transition: transform 0.06s ease;
+  }
+  button:active { transform: scale(0.96); }
+  button.primary { background: var(--work); border-color: var(--work); color: #fff; }
+  button:focus-visible { outline: 2px solid var(--work); outline-offset: 2px; }
+
+  @media (prefers-reduced-motion: reduce) { .progress, .mode-label { transition: none; } }
+</style>
+
+<div class="wrap">
+  <div class="mode-label" id="modeLabel">РАБОТА</div>
+  <div class="ring-wrap">
+    <svg width="220" height="220" viewBox="0 0 220 220">
+      <circle class="track" cx="110" cy="110" r="98"></circle>
+      <circle class="progress" id="progress" cx="110" cy="110" r="98"
+              stroke-dasharray="615.75" stroke-dashoffset="0"></circle>
+    </svg>
+    <div class="time" id="time">25:00</div>
+  </div>
+  <div class="cycles" id="cycles"></div>
+  <div class="controls">
+    <button class="primary" id="toggle">Старт</button>
+    <button id="reset">Сброс</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  var WORK = 25 * 60;
+  var REST = 5 * 60;
+  var LONG_REST = 15 * 60;
+  var CIRC = 2 * Math.PI * 98;
+
+  var state = { mode: 'work', remaining: WORK, running: false, cyclesDone: 0 };
+  var timerId = null;
+
+  var modeLabel = document.getElementById('modeLabel');
+  var timeEl = document.getElementById('time');
+  var progressEl = document.getElementById('progress');
+  var cyclesEl = document.getElementById('cycles');
+  var toggleBtn = document.getElementById('toggle');
+  var resetBtn = document.getElementById('reset');
+
+  function totalFor(mode) {
+    if (mode === 'work') return WORK;
+    if (mode === 'rest') return REST;
+    return LONG_REST;
+  }
+
+  function render() {
+    var m = Math.floor(state.remaining / 60);
+    var s = state.remaining % 60;
+    timeEl.textContent = (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+
+    var isRest = state.mode !== 'work';
+    modeLabel.textContent = state.mode === 'work' ? 'РАБОТА' : (state.mode === 'longrest' ? 'ДОЛГИЙ ОТДЫХ' : 'ОТДЫХ');
+    modeLabel.className = 'mode-label' + (isRest ? ' rest' : '');
+    progressEl.className = 'progress' + (isRest ? ' rest' : '');
+
+    var total = totalFor(state.mode);
+    var frac = state.remaining / total;
+    progressEl.setAttribute('stroke-dashoffset', CIRC * (1 - frac));
+
+    toggleBtn.textContent = state.running ? 'Пауза' : 'Старт';
+
+    var dots = '';
+    for (var i = 0; i < 4; i++) {
+      dots += '<span class="dot' + (i < state.cyclesDone % 4 ? ' done' : '') + '"></span>';
+    }
+    cyclesEl.innerHTML = 'Циклов пройдено: ' + state.cyclesDone + ' &nbsp; ' + dots;
+  }
+
+  function tick() {
+    state.remaining--;
+    if (state.remaining <= 0) {
+      if (state.mode === 'work') {
+        state.cyclesDone++;
+        state.mode = (state.cyclesDone % 4 === 0) ? 'longrest' : 'rest';
+      } else {
+        state.mode = 'work';
+      }
+      state.remaining = totalFor(state.mode);
+    }
+    render();
+  }
+
+  function start() {
+    if (state.running) return;
+    state.running = true;
+    timerId = setInterval(tick, 1000);
+    render();
+  }
+  function pause() {
+    state.running = false;
+    clearInterval(timerId);
+    render();
+  }
+  function reset() {
+    pause();
+    state.mode = 'work';
+    state.remaining = WORK;
+    state.cyclesDone = 0;
+    render();
+  }
+
+  toggleBtn.addEventListener('click', function () {
+    state.running ? pause() : start();
+  });
+  resetBtn.addEventListener('click', reset);
+
+  render();
+})();
+</script>
