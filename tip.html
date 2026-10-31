@@ -1,0 +1,140 @@
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Калькулятор чаевых</title>
+<style>
+  :root {
+    --bg: #f2efe8; --card: #ffffff; --fg: #231f17; --fg-dim: #857f6e;
+    --accent: #3f7d5c; --line: #e6e1d3;
+    --font-num: Georgia, 'Times New Roman', serif;
+    --font-ui: -apple-system, 'Segoe UI', Roboto, sans-serif;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #141310; --card: #1d1b16; --fg: #ece8dc; --fg-dim: #9b9686;
+      --accent: #63b48a; --line: #2c2a22; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #141310; --card: #1d1b16; --fg: #ece8dc; --fg-dim: #9b9686;
+    --accent: #63b48a; --line: #2c2a22; color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font-ui);
+    min-height: 100%; display: flex; align-items: center; justify-content: center;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 32px;
+  }
+  .card { width: 100%; max-width: 360px; background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 24px; }
+  h1 { font-size: 16px; font-weight: 700; margin: 0 0 20px; }
+
+  .field { margin-bottom: 18px; }
+  .field label { display: block; font-size: 12px; color: var(--fg-dim); margin-bottom: 6px; }
+  .field input[type="number"] {
+    width: 100%; border: 1px solid var(--line); background: transparent; color: var(--fg);
+    border-radius: 10px; padding: 11px 12px; font-size: 18px; font-family: var(--font-ui);
+    font-variant-numeric: tabular-nums;
+  }
+  .field input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  .chips { display: flex; gap: 8px; margin-bottom: 18px; }
+  .chip {
+    flex: 1; appearance: none; border: 1px solid var(--line); background: transparent; color: var(--fg);
+    border-radius: 9px; padding: 9px 0; font-size: 14px; cursor: pointer; font-family: var(--font-ui);
+  }
+  .chip.active { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  .chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .stepper { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+  .stepper button {
+    width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line); background: transparent;
+    color: var(--fg); font-size: 18px; cursor: pointer; font-family: var(--font-ui);
+  }
+  .stepper button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .stepper .n { flex: 1; text-align: center; font-size: 17px; font-variant-numeric: tabular-nums; }
+
+  hr { border: none; border-top: 1px solid var(--line); margin: 18px 0; }
+
+  .result-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+  .result-row .l { font-size: 13px; color: var(--fg-dim); }
+  .result-row .v { font-family: var(--font-num); font-size: 15px; font-variant-numeric: tabular-nums; }
+  .result-row.total .v { font-size: 26px; color: var(--accent); }
+</style>
+
+<div class="card">
+  <h1>Калькулятор чаевых</h1>
+
+  <div class="field">
+    <label for="bill">Сумма счёта</label>
+    <input type="number" id="bill" value="1200" inputmode="decimal">
+  </div>
+
+  <div class="field">
+    <label>Чаевые</label>
+    <div class="chips" id="tipChips">
+      <button class="chip" data-pct="10">10%</button>
+      <button class="chip active" data-pct="15">15%</button>
+      <button class="chip" data-pct="20">20%</button>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Количество человек</label>
+    <div class="stepper">
+      <button id="dec" aria-label="Меньше">−</button>
+      <div class="n" id="peopleN">1</div>
+      <button id="inc" aria-label="Больше">+</button>
+    </div>
+  </div>
+
+  <hr>
+
+  <div class="result-row"><span class="l">Чаевые</span><span class="v" id="tipAmount">—</span></div>
+  <div class="result-row"><span class="l">Итого</span><span class="v" id="totalAmount">—</span></div>
+  <div class="result-row total"><span class="l">На человека</span><span class="v" id="perPerson">—</span></div>
+</div>
+
+<script>
+(function () {
+  var billInput = document.getElementById('bill');
+  var chips = document.querySelectorAll('.chip');
+  var decBtn = document.getElementById('dec');
+  var incBtn = document.getElementById('inc');
+  var peopleEl = document.getElementById('peopleN');
+
+  var tipPct = 15;
+  var people = 1;
+
+  function fmt(n) {
+    return (Math.round(n * 100) / 100).toLocaleString('ru-RU');
+  }
+
+  function render() {
+    var bill = parseFloat(billInput.value) || 0;
+    var tip = bill * (tipPct / 100);
+    var total = bill + tip;
+    document.getElementById('tipAmount').textContent = fmt(tip);
+    document.getElementById('totalAmount').textContent = fmt(total);
+    document.getElementById('perPerson').textContent = fmt(total / people);
+    peopleEl.textContent = people;
+  }
+
+  billInput.addEventListener('input', render);
+
+  chips.forEach(function (chip) {
+    chip.addEventListener('click', function () {
+      chips.forEach(function (c) { c.classList.remove('active'); });
+      chip.classList.add('active');
+      tipPct = parseInt(chip.dataset.pct, 10);
+      render();
+    });
+  });
+
+  decBtn.addEventListener('click', function () { if (people > 1) { people--; render(); } });
+  incBtn.addEventListener('click', function () { people++; render(); });
+
+  render();
+})();
+</script>

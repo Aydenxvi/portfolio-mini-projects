@@ -1,0 +1,110 @@
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Калькулятор ИМТ</title>
+<style>
+  :root {
+    --bg: #eef2f3; --card: #ffffff; --fg: #1a2024; --fg-dim: #74808a;
+    --accent: #2f8f7a; --line: #dde6e8;
+    --under: #4f8fd6; --normal: #3fa06e; --over: #d1a23b; --obese: #d1543f;
+    --font-num: Georgia, 'Times New Roman', serif;
+    --font-ui: -apple-system, 'Segoe UI', Roboto, sans-serif;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f1313; --card: #181d1d; --fg: #e8ece9; --fg-dim: #8b958f;
+      --accent: #57c0a6; --line: #262e2e; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f1313; --card: #181d1d; --fg: #e8ece9; --fg-dim: #8b958f;
+    --accent: #57c0a6; --line: #262e2e; color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font-ui);
+    min-height: 100%; display: flex; align-items: center; justify-content: center;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 32px;
+  }
+  .card { width: 100%; max-width: 360px; background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 24px; }
+  h1 { font-size: 16px; font-weight: 700; margin: 0 0 20px; }
+
+  .field { margin-bottom: 16px; }
+  .field-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+  .field-row label { font-size: 12.5px; color: var(--fg-dim); }
+  .field-row .val { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  input[type="range"] { width: 100%; accent-color: var(--accent); }
+
+  .result { margin-top: 22px; text-align: center; }
+  .bmi-value { font-family: var(--font-num); font-size: 52px; line-height: 1; }
+  .bmi-label {
+    display: inline-block; margin-top: 8px; font-size: 12.5px; font-weight: 700;
+    padding: 4px 12px; border-radius: 20px; letter-spacing: 0.02em;
+  }
+
+  .scale { display: flex; height: 6px; border-radius: 3px; overflow: hidden; margin: 18px 0 6px; }
+  .scale div { flex: 1; }
+  .scale .s1 { background: var(--under); }
+  .scale .s2 { background: var(--normal); }
+  .scale .s3 { background: var(--over); }
+  .scale .s4 { background: var(--obese); }
+  .scale-labels { display: flex; justify-content: space-between; font-size: 10px; color: var(--fg-dim); }
+</style>
+
+<div class="card">
+  <h1>Калькулятор ИМТ</h1>
+
+  <div class="field">
+    <div class="field-row"><label for="height">Рост</label><span class="val" id="heightVal">175 см</span></div>
+    <input type="range" id="height" min="120" max="220" value="175">
+  </div>
+
+  <div class="field">
+    <div class="field-row"><label for="weight">Вес</label><span class="val" id="weightVal">70 кг</span></div>
+    <input type="range" id="weight" min="30" max="160" value="70">
+  </div>
+
+  <div class="result">
+    <div class="bmi-value" id="bmiValue">—</div>
+    <div class="bmi-label" id="bmiLabel">—</div>
+  </div>
+
+  <div class="scale"><div class="s1"></div><div class="s2"></div><div class="s3"></div><div class="s4"></div></div>
+  <div class="scale-labels"><span>Дефицит</span><span>Норма</span><span>Избыток</span><span>Ожирение</span></div>
+</div>
+
+<script>
+(function () {
+  var heightInput = document.getElementById('height');
+  var weightInput = document.getElementById('weight');
+
+  function render() {
+    var h = parseInt(heightInput.value, 10);
+    var w = parseInt(weightInput.value, 10);
+    document.getElementById('heightVal').textContent = h + ' см';
+    document.getElementById('weightVal').textContent = w + ' кг';
+
+    var hm = h / 100;
+    var bmi = w / (hm * hm);
+    var bmiRounded = Math.round(bmi * 10) / 10;
+    document.getElementById('bmiValue').textContent = bmiRounded;
+
+    var label, color, bg;
+    if (bmi < 18.5) { label = 'Дефицит массы'; color = '#fff'; bg = 'var(--under)'; }
+    else if (bmi < 25) { label = 'Норма'; color = '#fff'; bg = 'var(--normal)'; }
+    else if (bmi < 30) { label = 'Избыточный вес'; color = '#2a2410'; bg = 'var(--over)'; }
+    else { label = 'Ожирение'; color = '#fff'; bg = 'var(--obese)'; }
+
+    var labelEl = document.getElementById('bmiLabel');
+    labelEl.textContent = label;
+    labelEl.style.background = bg;
+    labelEl.style.color = color;
+  }
+
+  heightInput.addEventListener('input', render);
+  weightInput.addEventListener('input', render);
+  render();
+})();
+</script>

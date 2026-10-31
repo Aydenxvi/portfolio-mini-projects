@@ -1,0 +1,184 @@
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Секундомер</title>
+<style>
+  :root {
+    --bg: #101115; --card: #17181d; --fg: #e9eaef; --fg-dim: #7d808c;
+    --accent: #4f8cff; --line: #272930; --danger: #e4675f;
+    --font-num: Georgia, 'Times New Roman', serif;
+    --font-ui: -apple-system, 'Segoe UI', Roboto, sans-serif;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font-ui);
+    min-height: 100%; display: flex; align-items: center; justify-content: center;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 32px;
+  }
+  .card { width: 100%; max-width: 320px; background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 24px; text-align: center; }
+
+  .modes { display: flex; gap: 6px; background: var(--bg); border-radius: 10px; padding: 4px; margin-bottom: 22px; }
+  .modes button {
+    flex: 1; appearance: none; border: none; background: transparent; color: var(--fg-dim);
+    border-radius: 7px; padding: 8px 0; font-size: 13px; cursor: pointer; font-family: var(--font-ui);
+  }
+  .modes button.active { background: var(--card); color: var(--fg); font-weight: 600; }
+  .modes button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .time { font-family: var(--font-num); font-size: 52px; font-variant-numeric: tabular-nums; margin-bottom: 20px; }
+  .ms { font-size: 20px; color: var(--fg-dim); }
+
+  .countdown-set { display: flex; gap: 8px; justify-content: center; margin-bottom: 20px; }
+  .countdown-set button {
+    appearance: none; border: 1px solid var(--line); background: transparent; color: var(--fg);
+    border-radius: 9px; padding: 7px 12px; font-size: 13px; cursor: pointer; font-family: var(--font-ui);
+  }
+  .countdown-set button:hover { border-color: var(--accent); }
+
+  .controls { display: flex; gap: 10px; }
+  .controls button {
+    flex: 1; appearance: none; border: none; border-radius: 11px; padding: 12px 0; font-size: 15px;
+    font-weight: 600; cursor: pointer; font-family: var(--font-ui);
+  }
+  .btn-start { background: var(--accent); color: #0c1220; }
+  .btn-reset { background: transparent; border: 1px solid var(--line); color: var(--fg); }
+  .controls button:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+
+  .laps { margin-top: 16px; max-height: 110px; overflow-y: auto; text-align: left; font-size: 12.5px; color: var(--fg-dim); }
+  .laps div { display: flex; justify-content: space-between; padding: 4px 2px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+</style>
+
+<div class="card">
+  <div class="modes">
+    <button class="active" data-mode="stopwatch">Секундомер</button>
+    <button data-mode="countdown">Таймер</button>
+  </div>
+
+  <div class="time" id="time">00:00<span class="ms">.00</span></div>
+
+  <div class="countdown-set" id="countdownSet" hidden>
+    <button data-sec="60">1 мин</button>
+    <button data-sec="300">5 мин</button>
+    <button data-sec="600">10 мин</button>
+  </div>
+
+  <div class="controls">
+    <button class="btn-start" id="startBtn">Старт</button>
+    <button class="btn-reset" id="resetBtn">Сброс</button>
+  </div>
+
+  <div class="laps" id="laps"></div>
+</div>
+
+<script>
+(function () {
+  var mode = 'stopwatch';
+  var running = false;
+  var elapsedMs = 0;
+  var countdownTotalMs = 60000;
+  var countdownRemainingMs = countdownTotalMs;
+  var lastTick = null;
+  var rafId = null;
+  var laps = [];
+
+  var timeEl = document.getElementById('time');
+  var startBtn = document.getElementById('startBtn');
+  var resetBtn = document.getElementById('resetBtn');
+  var lapsEl = document.getElementById('laps');
+  var countdownSet = document.getElementById('countdownSet');
+
+  function fmt(ms) {
+    var totalCs = Math.max(0, Math.floor(ms / 10));
+    var cs = totalCs % 100;
+    var totalSec = Math.floor(totalCs / 100);
+    var s = totalSec % 60;
+    var m = Math.floor(totalSec / 60);
+    function pad(n) { return (n < 10 ? '0' : '') + n; }
+    return pad(m) + ':' + pad(s) + '<span class="ms">.' + pad(cs) + '</span>';
+  }
+
+  function render() {
+    if (mode === 'stopwatch') {
+      timeEl.innerHTML = fmt(elapsedMs);
+    } else {
+      timeEl.innerHTML = fmt(countdownRemainingMs);
+    }
+    startBtn.textContent = running ? 'Пауза' : 'Старт';
+    lapsEl.innerHTML = laps.map(function (l, i) {
+      return '<div><span>Круг ' + (laps.length - i) + '</span><span>' + l + '</span></div>';
+    }).join('');
+  }
+
+  function tick(now) {
+    if (!running) return;
+    var dt = now - lastTick;
+    lastTick = now;
+    if (mode === 'stopwatch') {
+      elapsedMs += dt;
+    } else {
+      countdownRemainingMs -= dt;
+      if (countdownRemainingMs <= 0) {
+        countdownRemainingMs = 0;
+        running = false;
+        render();
+        return;
+      }
+    }
+    render();
+    rafId = requestAnimationFrame(tick);
+  }
+
+  function start() {
+    if (running) {
+      running = false;
+      cancelAnimationFrame(rafId);
+      render();
+      return;
+    }
+    if (mode === 'countdown' && countdownRemainingMs <= 0) countdownRemainingMs = countdownTotalMs;
+    running = true;
+    lastTick = performance.now();
+    rafId = requestAnimationFrame(tick);
+    render();
+  }
+
+  function reset() {
+    running = false;
+    cancelAnimationFrame(rafId);
+    if (mode === 'stopwatch') { elapsedMs = 0; laps = []; }
+    else { countdownRemainingMs = countdownTotalMs; }
+    render();
+  }
+
+  startBtn.addEventListener('click', function () {
+    if (mode === 'stopwatch' && running) {
+      laps.unshift(timeEl.textContent);
+    }
+    start();
+  });
+  resetBtn.addEventListener('click', reset);
+
+  document.querySelectorAll('.modes button').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      document.querySelectorAll('.modes button').forEach(function (b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      mode = btn.dataset.mode;
+      countdownSet.hidden = mode !== 'countdown';
+      lapsEl.style.display = mode === 'stopwatch' ? '' : 'none';
+      reset();
+    });
+  });
+
+  countdownSet.querySelectorAll('button').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      countdownTotalMs = parseInt(btn.dataset.sec, 10) * 1000;
+      countdownRemainingMs = countdownTotalMs;
+      render();
+    });
+  });
+
+  render();
+})();
+</script>
